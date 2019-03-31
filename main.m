@@ -18,7 +18,7 @@ giorno_settimana_Due = giorno_settimana(366:730, 1);
 misura_Uno = misura(1:365, 1);
 misura_Due = misura(366:730,1);
 
-%Visualizzo la temperatura in relazione al giorno dell'anno
+%Visualizzo i consumi in relazione al giorno dell'anno
 figure(1);
 scatter(giorno_anno_Uno,misura_Uno,'r','Marker','o'); 
 hold on;
@@ -27,7 +27,8 @@ xlabel('Giorno Anno');
 ylabel('Consumi');
 title('Consumi Anno1 vs Anno2');
 
-%Visualizzo la temperatura in relazione al giorno della settimana
+
+%Visualizzo i consumi in relazione al giorno della settimana
 figure(2);
 scatter(giorno_settimana_Uno,misura_Uno,'r','Marker','o'); 
 hold on;
@@ -37,17 +38,23 @@ ylabel('Consumi');
 title('Consumi Settimana1 vs Settimana2');
 
 
-%Controllo occorrenz
+%Un primo approccio e' la stima tramite LS
+% model to fit  y = a0 + a1 x + a2 x^2
 figure(3);
-pd = makedist ('Normal', 0 , 1);
-histogram(misura,70,'Normalization','pdf');
+giorno_anno_Uno_Formatted = giorno_anno_Uno./365;
+phi = [ ones(length(giorno_anno_Uno_Formatted),1),giorno_anno_Uno_Formatted,giorno_anno_Uno_Formatted.^2,]; % least square approximation
+thetaCap = phi \ misura_Uno;
+MisuraStimata = phi*thetaCap;
+%------------------------------------------------------------------------%
+% visualize the least square solution
+plot(giorno_anno_Uno,MisuraStimata,'r-')
+hold on;
+scatter(giorno_anno_Uno,misura_Uno,'r','Marker','o');
+%come previsto una lineare di ordine 2 non approssima per niente
+%l'andamento!
 
-
-
-
-
-
-
+%Inanzitutto i dati forniti sono periodici, dai grafici si nota un certo
+%andamento sinusoidale dei consumi.
 
 
 
