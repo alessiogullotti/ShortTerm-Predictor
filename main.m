@@ -1,6 +1,6 @@
 clc;
+clear;
 close all;
-clear all;
 
 %Carico i dati all'interno di vettori distinti
 data = readtable('data.xlsx','Range','A2:C732');
@@ -38,23 +38,61 @@ ylabel('Consumi');
 title('Consumi Settimana1 vs Settimana2');
 
 
-%Un primo approccio e' la stima tramite LS
-% model to fit  y = a0 + a1 x + a2 x^2
+%Un primo approccio e' la stima tramite lineare LS
+% model to fit  z = a0 + a1x + a2y + a3x^2 + a4y^2 + a5xy
 figure(3);
-giorno_anno_Uno_Formatted = giorno_anno_Uno./365;
-phi = [ ones(length(giorno_anno_Uno_Formatted),1),giorno_anno_Uno_Formatted,giorno_anno_Uno_Formatted.^2,]; % least square approximation
+phi = [ ones(length(giorno_anno_Uno),1),giorno_anno_Uno,giorno_settimana_Uno,giorno_anno_Uno.^2,giorno_settimana_Uno.^2,giorno_anno_Uno.*giorno_settimana_Uno]; % least square approximation
 thetaCap = phi \ misura_Uno;
 MisuraStimata = phi*thetaCap;
 %------------------------------------------------------------------------%
 % visualize the least square solution
-plot(giorno_anno_Uno,MisuraStimata,'r-')
+scatter3(giorno_anno_Uno,giorno_settimana_Uno,MisuraStimata,'*');
+xlabel('Giorni Anno');
+ylabel('Giorni Settimana');
+zlabel('Consumi');
 hold on;
-scatter(giorno_anno_Uno,misura_Uno,'r','Marker','o');
+
+[Xg, Yg] = meshgrid(linspace(min(giorno_anno_Uno),max(giorno_anno_Uno),15), linspace(min(giorno_settimana_Uno),max(giorno_settimana_Uno),15));
+Xcol = Xg(:);
+Ycol = Yg(:);
+PhiGrid2 = [ones(size(Xcol)), Xcol,Ycol,Xcol.^2,Ycol.^2,Xcol.*Ycol];
+Ygrid2 = PhiGrid2*thetaCap;
+surf(Xg,Yg,reshape(Ygrid2,size(Xg)));
+hold on;
+scatter3(giorno_anno_Uno,giorno_settimana_Uno,misura_Uno,'o');
 %come previsto una lineare di ordine 2 non approssima per niente
 %l'andamento!
 
-%Inanzitutto i dati forniti sono periodici, dai grafici si nota un certo
-%andamento sinusoidale dei consumi.
 
+%Provo con un modello non lineare basato sulla stima dei coefficienti di Fourier
+figure(4);
+%scalo a[-pi,pi]
+x1 = min(giorno_anno_Uno);
+x2 = max(giorno_settimana_Uno);
+x = pi*(2*(giorno_anno_Uno-x1)/(x2-x1) - 1);
+
+y1 = min(giorno_settimana_Uno);
+y2 = max(giorno_settimana_Uno);
+y = pi*(2*(giorno_settimana_Uno-y1)/(x2-x1)-1);
+phiFourier = [ 0.5*ones(length(giorno_anno_Uno),1),cos(giorno_anno_Uno).*cos(giorno_settimana_Uno),cos(giorno_anno_Uno).*sin(giorno_settimana_Uno),sin(giorno_anno_Uno).*cos(giorno_settimana_Uno),sin(giorno_anno_Uno).*sin(giorno_settimana_Uno)];
+thetaFour = phiFourier \ misura_Uno;
+MisuraStimFour = phiFourier*thetaFour;
+scatter3(giorno_anno_Uno,giorno_settimana_Uno,MisuraStimFour,'*');
+xlabel('Giorni Anno');
+ylabel('Giorni Settimana');
+zlabel('Consumi');
+hold on;
+
+[Xg, Yg] = meshgrid(linspace(min(giorno_anno_Uno),max(giorno_anno_Uno),15), linspace(min(giorno_settimana_Uno),max(giorno_settimana_Uno),15));
+Xcol = Xg(:);
+Ycol = Yg(:);
+PhiGridFour = [0.5*ones(size(Xcol)),cos(Xcol).*cos(Ycol),cos(Xcol).*sin(Ycol),sin(Xcol).*cos(Ycol),sin(Xcol).*sin(Ycol)];
+Ygrid3 = PhiGridFour*thetaFour;
+surf(Xg,Yg,reshape(Ygrid3,size(Xg)));
+hold on;
+scatter3(giorno_anno_Uno,giorno_settimana_Uno,misura_Uno,'o');
+
+%La rappresentazione e' corretta ma non sembra seguire l'andamento dei
+%dati, va sistemato
 
 
