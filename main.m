@@ -37,15 +37,14 @@ xlabel('Giorno Settimana');
 ylabel('Consumi');
 title('Consumi Settimana1 vs Settimana2');
 
-
+%////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 %Un primo approccio e' la stima tramite lineare LS
 % model to fit  z = a0 + a1x + a2y + a3x^2 + a4y^2 + a5xy
 figure(3);
 phi = [ ones(length(giorno_anno_Uno),1),giorno_anno_Uno,giorno_settimana_Uno,giorno_anno_Uno.^2,giorno_settimana_Uno.^2,giorno_anno_Uno.*giorno_settimana_Uno]; % least square approximation
 thetaCap = phi \ misura_Uno;
 MisuraStimata = phi*thetaCap;
-%------------------------------------------------------------------------%
-% visualize the least square solution
+
 scatter3(giorno_anno_Uno,giorno_settimana_Uno,MisuraStimata,'*');
 xlabel('Giorni Anno');
 ylabel('Giorni Settimana');
@@ -55,26 +54,22 @@ hold on;
 [Xg, Yg] = meshgrid(linspace(min(giorno_anno_Uno),max(giorno_anno_Uno),15), linspace(min(giorno_settimana_Uno),max(giorno_settimana_Uno),15));
 Xcol = Xg(:);
 Ycol = Yg(:);
-PhiGrid2 = [ones(size(Xcol)), Xcol,Ycol,Xcol.^2,Ycol.^2,Xcol.*Ycol];
-Ygrid2 = PhiGrid2*thetaCap;
-surf(Xg,Yg,reshape(Ygrid2,size(Xg)));
+PhiGrid = [ones(size(Xcol)), Xcol,Ycol,Xcol.^2,Ycol.^2,Xcol.*Ycol];
+Ygrid = PhiGrid*thetaCap;
+surf(Xg,Yg,reshape(Ygrid,size(Xg)));
 hold on;
 scatter3(giorno_anno_Uno,giorno_settimana_Uno,misura_Uno,'o');
-%come previsto una lineare di ordine 2 non approssima per niente
-%l'andamento!
+%come previsto una lineare di ordine 2 non approssima per niente l'andamento!
 
 
+%/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 %Provo con un modello non lineare basato sulla stima dei coefficienti di Fourier
 figure(4);
-%scalo a[-pi,pi]
-x1 = min(giorno_anno_Uno);
-x2 = max(giorno_settimana_Uno);
-x = pi*(2*(giorno_anno_Uno-x1)/(x2-x1) - 1);
-
-y1 = min(giorno_settimana_Uno);
-y2 = max(giorno_settimana_Uno);
-y = pi*(2*(giorno_settimana_Uno-y1)/(x2-x1)-1);
-phiFourier = [ 0.5*ones(length(giorno_anno_Uno),1),cos(giorno_anno_Uno).*cos(giorno_settimana_Uno),cos(giorno_anno_Uno).*sin(giorno_settimana_Uno),sin(giorno_anno_Uno).*cos(giorno_settimana_Uno),sin(giorno_anno_Uno).*sin(giorno_settimana_Uno)];
+x = giorno_anno_Uno;
+y = giorno_settimana_Uno;
+nx= x*(1:12);
+ny= y*(1:12);
+phiFourier = [0.5*ones(size(x)),cos(nx).*cos(ny),cos(nx).*sin(ny),sin(nx).*cos(ny),sin(nx).*sin(ny)];
 thetaFour = phiFourier \ misura_Uno;
 MisuraStimFour = phiFourier*thetaFour;
 scatter3(giorno_anno_Uno,giorno_settimana_Uno,MisuraStimFour,'*');
@@ -86,13 +81,90 @@ hold on;
 [Xg, Yg] = meshgrid(linspace(min(giorno_anno_Uno),max(giorno_anno_Uno),15), linspace(min(giorno_settimana_Uno),max(giorno_settimana_Uno),15));
 Xcol = Xg(:);
 Ycol = Yg(:);
-PhiGridFour = [0.5*ones(size(Xcol)),cos(Xcol).*cos(Ycol),cos(Xcol).*sin(Ycol),sin(Xcol).*cos(Ycol),sin(Xcol).*sin(Ycol)];
-Ygrid3 = PhiGridFour*thetaFour;
-surf(Xg,Yg,reshape(Ygrid3,size(Xg)));
+nxcol= Xcol*(1:12);
+nycol= Ycol*(1:12);
+PhiGridFour = [0.5*ones(size(Xcol)),cos(nxcol).*cos(nycol),cos(nxcol).*sin(nycol),sin(nxcol).*cos(nycol),sin(nxcol).*sin(nycol)];
+YgridFour = PhiGridFour*thetaFour;
+surf(Xg,Yg,reshape(YgridFour,size(Xg)));
 hold on;
 scatter3(giorno_anno_Uno,giorno_settimana_Uno,misura_Uno,'o');
 
-%La rappresentazione e' corretta ma non sembra seguire l'andamento dei
-%dati, va sistemato
+%La rappresentazione e' corretta, segue abbastanza i dati, va validato.
+
+%----------------------------------------------------------------------------------------------------------------------
+%Utilizzo una rete neurale con ingresso due input
+%Utilizzo un solo layer nascosto, con 20 neuroni
+%Utilizzando algoritmo Bayesiano, il grafico di regressione esce
+figure(5);
+x = [giorno_anno giorno_settimana]';
+t = [misura]';
+
+% Choose a Training Function
+% For a list of all training functions type: help nntrain
+% 'trainlm' is usually fastest.
+% 'trainbr' takes longer but may be better for challenging problems.
+% 'trainscg' uses less memory. Suitable in low memory situations.
+trainFcn = 'trainbr';  % Bayesian Regularization backpropagation.
+
+% Create a Fitting Network
+hiddenLayerSize = 20;
+net = fitnet(hiddenLayerSize,trainFcn);
+
+% Choose Input and Output Pre/Post-Processing Functions
+net.input.processFcns = {'removeconstantrows','mapminmax'};
+net.output.processFcns = {'removeconstantrows','mapminmax'};
+
+% Setup Division of Data for Training, Validation, Testing
+net.divideFcn = 'dividerand';  % Divide data randomly
+net.divideMode = 'sample';  % Divide up every sample
+net.divideParam.trainRatio = 70/100;
+net.divideParam.valRatio = 15/100;
+net.divideParam.testRatio = 15/100;
+
+% Choose a Performance Function
+net.performFcn = 'mse';  % Mean Squared Error
+
+% Choose Plot Functions
+net.plotFcns = {'plotperform','plottrainstate','ploterrhist', ...
+    'plotregression', 'plotfit'};
+
+% Train the Network
+[net,tr] = train(net,x,t);
+
+% Test the Network
+y = net(x);
+e = gsubtract(t,y);
+performance = perform(net,t,y)
+
+% Recalculate Training, Validation and Test Performance
+trainTargets = t .* tr.trainMask{1};
+valTargets = t .* tr.valMask{1};
+testTargets = t .* tr.testMask{1};
+trainPerformance = perform(net,trainTargets,y)
+valPerformance = perform(net,valTargets,y)
+testPerformance = perform(net,testTargets,y)
+
+% View the Network
+view(net)
+
+% Plots
+% Uncomment these lines to enable various plots.
+%figure, plotperform(tr)
+%figure, plottrainstate(tr)
+%figure, ploterrhist(e)
+%figure, plotregression(t,y)
+%figure, plotfit(net,x,t)
 
 
+scatter3(giorno_anno,giorno_settimana,y,'*');
+xlabel('Giorni Anno');
+ylabel('Giorni Settimana');
+zlabel('Consumi');
+hold on;
+
+[Xg, Yg] = meshgrid(linspace(min(giorno_anno),max(giorno_anno),15), linspace(min(giorno_settimana),max(giorno_settimana),15));
+Xcol = Xg(:);
+Ycol = Yg(:);
+surf(Xg,Yg,reshape(y,size(Xg)));
+hold on;
+scatter3(giorno_anno,giorno_settimana,misura,'o');
