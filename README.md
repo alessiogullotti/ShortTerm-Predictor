@@ -1,4 +1,8 @@
 # ShortTerm-Predictor
+
+Il procedimento è predirre i giorni precedenti al mercoledì che si vuole predirre, fino al mercoledì precedente. Costruiti i vari modelli
+eseguirne i test dalla slide VALIDAZIONE.
+
 Il file Excel contiene due anni di dati giornalieri, strutturati come segue: 
 • 1 colonna: giorno dell’anno [1, ..., 365]; 
 • 2 colonna: giorno della settimana [1, ..., 7]; 
