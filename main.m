@@ -7,97 +7,201 @@ data = readtable('data.xlsx','Range','A2:C732');
 giorno_anno = table2array(data(: , 1));
 giorno_settimana = table2array ( data(: , 2));
 misura = table2array(data(: , 3));
-
-%Spezzo le misure in anno 1 e anno 2
-giorno_anno_Uno = giorno_anno(1:365, 1);
-giorno_anno_Due = giorno_anno(366:730, 1);
-
-giorno_settimana_Uno = giorno_settimana(1:365, 1);
-giorno_settimana_Due = giorno_settimana(366:730, 1);
-
-misura_Uno = misura(1:365, 1);
-misura_Due = misura(366:730,1);
-
-%Visualizzo i consumi in relazione al giorno dell'anno
-figure(1);
-scatter(giorno_anno_Uno,misura_Uno,'r','Marker','o'); 
-hold on;
-scatter(giorno_anno_Due,misura_Due,'b','Marker','x');
-xlabel('Giorno Anno');
-ylabel('Consumi');
-title('Consumi Anno1 vs Anno2');
-
+for n = 1: size(misura)-1
+    if isnan(misura(n,:)) || isnan(giorno_anno(n,:)) || isnan(giorno_settimana(n,:))
+        giorno_anno(n,:) = [];
+        misura(n,:) = [];
+        giorno_settimana(n,:) = [];
+  
+    end
+end
 
 %Visualizzo i consumi in relazione al giorno della settimana
 figure(2);
-scatter(giorno_settimana_Uno,misura_Uno,'r','Marker','o'); 
+scatter(giorno_settimana,misura,'r','Marker','o'); 
 hold on;
-scatter(giorno_settimana_Due,misura_Due,'b','Marker','x');
+scatter(giorno_settimana,misura,'b','Marker','x');
 xlabel('Giorno Settimana');
 ylabel('Consumi');
 title('Consumi Settimana1 vs Settimana2');
 
-%////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-%Un primo approccio e' la stima tramite lineare LS
-% model to fit  z = a0 + a1x + a2y + a3x^2 + a4y^2 + a5xy
+%Visualizzo situazione generale
 figure(3);
-phi = [ ones(length(giorno_anno_Uno),1),giorno_anno_Uno,giorno_settimana_Uno,giorno_anno_Uno.^2,giorno_settimana_Uno.^2,giorno_anno_Uno.*giorno_settimana_Uno]; % least square approximation
-thetaCap = phi \ misura_Uno;
-MisuraStimata = phi*thetaCap;
+scatter3(giorno_anno,giorno_settimana,misura,'o');
+title('Consumi');
+xlabel('Giorno Anno');
+ylabel('Giorno Settimana');
+zlabel('Consumi');
 
-scatter3(giorno_anno_Uno,giorno_settimana_Uno,MisuraStimata,'*');
+%////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+%Un primo approccio e' la stima lineare di ordine 2 LS
+% model to fit  z = a0 + a1x + a2y + a3x^2 + a4y^2 + a5xy
+figure(4);
+phiL2 = [ones(length(giorno_anno),1),giorno_anno,giorno_settimana,giorno_anno.^2,giorno_settimana.^2,giorno_anno.*giorno_settimana];
+thetaCapL2 = phiL2 \ misura;
+misuraStimataL2 = phiL2 * thetaCapL2;
+scartoL2 = misura - misuraStimataL2;
+SSRL2 = scartoL2' * scartoL2;
+scatter3(giorno_anno,giorno_settimana,misuraStimataL2,'*');
 xlabel('Giorni Anno');
 ylabel('Giorni Settimana');
 zlabel('Consumi');
+title('Lineare di ordine 2');
 hold on;
 
-[Xg, Yg] = meshgrid(linspace(min(giorno_anno_Uno),max(giorno_anno_Uno),15), linspace(min(giorno_settimana_Uno),max(giorno_settimana_Uno),15));
+[Xg, Yg] = meshgrid(linspace(min(giorno_anno),max(giorno_anno),30), linspace(min(giorno_settimana),max(giorno_settimana),30));
 Xcol = Xg(:);
 Ycol = Yg(:);
-PhiGrid = [ones(size(Xcol)), Xcol,Ycol,Xcol.^2,Ycol.^2,Xcol.*Ycol];
-Ygrid = PhiGrid*thetaCap;
-surf(Xg,Yg,reshape(Ygrid,size(Xg)));
+PhiGridL2 = [ones(size(Xcol)), Xcol,Ycol,Xcol.^2,Ycol.^2,Xcol.*Ycol];
+YgridL2 = PhiGridL2*thetaCapL2;
+surf(Xg,Yg,reshape(YgridL2,size(Xg)));
 hold on;
-scatter3(giorno_anno_Uno,giorno_settimana_Uno,misura_Uno,'o');
+scatter3(giorno_anno,giorno_settimana,misura,'o');
+
 %come previsto una lineare di ordine 2 non approssima per niente l'andamento!
 
+%//////////////////////////////////////////////////////////////////////////
+%Provo con stima lineare di ordine 3
+figure(5);
+phiL3 = [phiL2, giorno_anno.^3,giorno_settimana.^3,(giorno_anno.^2).*giorno_settimana,giorno_anno.*(giorno_settimana.^2)];
+thetaCapL3 = phiL3 \ misura;
+misuraStimataL3 = phiL3 * thetaCapL3;
+scartoL3 = misura - misuraStimataL3;
+SSRL3 = scartoL3' * scartoL3;
 
-%/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-%Provo con un modello non lineare basato sulla stima dei coefficienti di Fourier
-figure(4);
-x = giorno_anno_Uno;
-y = giorno_settimana_Uno;
-nx= x*(1:12);
-ny= y*(1:12);
-phiFourier = [0.5*ones(size(x)),cos(nx).*cos(ny),cos(nx).*sin(ny),sin(nx).*cos(ny),sin(nx).*sin(ny)];
-thetaFour = phiFourier \ misura_Uno;
-MisuraStimFour = phiFourier*thetaFour;
-scatter3(giorno_anno_Uno,giorno_settimana_Uno,MisuraStimFour,'*');
+scatter3(giorno_anno,giorno_settimana,misuraStimataL3,'*');
 xlabel('Giorni Anno');
 ylabel('Giorni Settimana');
 zlabel('Consumi');
+title('Lineare di ordine 3');
 hold on;
 
-[Xg, Yg] = meshgrid(linspace(min(giorno_anno_Uno),max(giorno_anno_Uno),15), linspace(min(giorno_settimana_Uno),max(giorno_settimana_Uno),15));
+[Xg, Yg] = meshgrid(linspace(min(giorno_anno),max(giorno_anno),30), linspace(min(giorno_settimana),max(giorno_settimana),30));
 Xcol = Xg(:);
 Ycol = Yg(:);
-nxcol= Xcol*(1:12);
-nycol= Ycol*(1:12);
-PhiGridFour = [0.5*ones(size(Xcol)),cos(nxcol).*cos(nycol),cos(nxcol).*sin(nycol),sin(nxcol).*cos(nycol),sin(nxcol).*sin(nycol)];
-YgridFour = PhiGridFour*thetaFour;
+PhiGridL3 = [ones(size(Xcol)), Xcol,Ycol,Xcol.^2,Ycol.^2,Xcol.*Ycol, Xcol.^3,Ycol.^3,(Xcol.^2).*Ycol,Xcol.*(Ycol.^2)];
+YgridL3 = PhiGridL3*thetaCapL3;
+surf(Xg,Yg,reshape(YgridL3,size(Xg)));
+hold on;
+scatter3(giorno_anno,giorno_settimana,misura,'o');
+
+%l'SSR e' diminuito di poco rispetto al 2 ordine
+
+%//////////////////////////////////////////////////////////////////////////
+%Provo con stima lineare di ordine 4
+figure(6);
+phiL4 = [phiL3, giorno_anno.^4,giorno_settimana.^4,(giorno_anno.^3).*giorno_settimana,giorno_anno.*(giorno_settimana.^3),(giorno_anno.^3).*(giorno_settimana.^2),(giorno_anno.^2).*(giorno_settimana.^3)];
+thetaCapL4 = phiL4 \ misura;
+misuraStimataL4 = phiL4 * thetaCapL4;
+scartoL4 = misura - misuraStimataL4;
+SSRL4 = scartoL4' * scartoL4;
+
+scatter3(giorno_anno,giorno_settimana,misuraStimataL4,'*');
+xlabel('Giorni Anno');
+ylabel('Giorni Settimana');
+zlabel('Consumi');
+title('Lineare di ordine 4');
+hold on;
+
+[Xg, Yg] = meshgrid(linspace(min(giorno_anno),max(giorno_anno),30), linspace(min(giorno_settimana),max(giorno_settimana),30));
+Xcol = Xg(:);
+Ycol = Yg(:);
+PhiGridL4 = [ones(size(Xcol)), Xcol,Ycol,Xcol.^2,Ycol.^2,Xcol.*Ycol, Xcol.^3,Ycol.^3,(Xcol.^2).*Ycol,Xcol.*(Ycol.^2),Xcol.^4,Ycol.^4,(Xcol.^3).*Ycol,Xcol.*(Ycol.^3),(Xcol.^3).*(Ycol.^2),(Xcol.^2).*(Ycol.^3)];
+YgridL4 = PhiGridL4*thetaCapL4;
+surf(Xg,Yg,reshape(YgridL4,size(Xg)));
+hold on;
+scatter3(giorno_anno,giorno_settimana,misura,'o');
+
+%l'SSR e' diminuito di molto, ma non e' ancora accettabile
+
+%//////////////////////////////////////////////////////////////////////////
+%Si nota un'andamento sinusoidale, provo serie di Fourier
+%N.B = variare il max di n per variare il grado
+figure(7);
+w = 2 * pi / 365;
+phiFour = ones(size(giorno_anno));
+for n = 1:8
+    phiFour = [phiFour, cos(n*w.*giorno_anno),sin(n*w.*giorno_anno),cos(n*w.*giorno_settimana),sin(n*w.*giorno_settimana)];
+end
+thetaCapFour = phiFour \ misura;
+misuraStimataFour = phiFour * thetaCapFour;
+scartoFour = misura - misuraStimataFour;
+SSRFOUR = scartoFour' * scartoFour;
+
+
+scatter3(giorno_anno,giorno_settimana,misuraStimataFour,'*');
+xlabel('Giorni Anno');
+ylabel('Giorni Settimana');
+zlabel('Consumi');
+title('Fourier ordine n');
+hold on;
+
+[Xg, Yg] = meshgrid(linspace(min(giorno_anno),max(giorno_anno),30), linspace(min(giorno_settimana),max(giorno_settimana),30));
+Xcol = Xg(:);
+Ycol = Yg(:);
+PhiGridFour = ones(size(Xcol));
+for n = 1:8
+    PhiGridFour = [PhiGridFour, cos(n*w.*Xcol),sin(n*w.*Xcol),cos(n*w.*Ycol),sin(n*w.*Ycol)];
+end
+YgridFour = PhiGridFour*thetaCapFour;
 surf(Xg,Yg,reshape(YgridFour,size(Xg)));
 hold on;
-scatter3(giorno_anno_Uno,giorno_settimana_Uno,misura_Uno,'o');
+scatter3(giorno_anno,giorno_settimana,misura,'o');
 
-%La rappresentazione e' corretta, segue abbastanza i dati, va validato.
+
+%Si nota che il modello mediante serie di Fourier risulta essere il
+%migliore, provo a Crossvalidarlo con i dati del secondo anno
+%N.B= adattare l' n massimo con quello in identificazione
+figure(8);
+dataDue = readtable('data.xlsx','Range','A367:C732');
+giorno_annoDue = table2array(dataDue(: , 1));
+giorno_settimanaDue = table2array( dataDue(: , 2));
+misuraDue = table2array(dataDue(: , 3));
+for c = 1: 364
+    if isnan(misuraDue(c,:)) || isnan(giorno_annoDue(n,:)) || isnan(giorno_settimanaDue(n,:))
+        giorno_annoDue(c,:) = [];
+        misuraDue(c,:) = [];
+        giorno_settimanaDue(c,:) = [];
+    end
+end
+
+phiFourVal = ones(size(giorno_annoDue));
+for n = 1:8
+    phiFourVal = [phiFourVal, cos(n*w.*giorno_annoDue),sin(n*w.*giorno_annoDue),cos(n*w.*giorno_settimanaDue),sin(n*w.*giorno_settimanaDue)];
+end
+misuraStimataFourVal = phiFourVal * thetaCapFour;
+scartoFourVal = misuraDue - misuraStimataFourVal;
+SSRFOURVAL = scartoFourVal' * scartoFourVal;
+
+
+scatter3(giorno_annoDue,giorno_settimanaDue,misuraStimataFourVal,'*');
+xlabel('Giorni Anno');
+ylabel('Giorni Settimana');
+zlabel('Consumi');
+title('CrossValidazione Fourier ordine n');
+hold on;
+
+[Xg, Yg] = meshgrid(linspace(min(giorno_annoDue),max(giorno_annoDue),30), linspace(min(giorno_settimanaDue),max(giorno_settimanaDue),30));
+Xcol = Xg(:);
+Ycol = Yg(:);
+PhiGridFourVal = ones(size(Xcol));
+for n = 1:8
+    PhiGridFourVal = [PhiGridFourVal, cos(n*w.*Xcol),sin(n*w.*Xcol),cos(n*w.*Ycol),sin(n*w.*Ycol)];
+end
+YgridFourVal = PhiGridFourVal*thetaCapFour;
+surf(Xg,Yg,reshape(YgridFourVal,size(Xg)));
+hold on;
+scatter3(giorno_anno,giorno_settimana,misura,'o');
+
+%Il risultato e' soddisfacente, lo scarto e' basso
 
 %----------------------------------------------------------------------------------------------------------------------
 %Utilizzo una rete neurale con ingresso due input
 %Utilizzo un solo layer nascosto, con 20 neuroni
 %Utilizzando algoritmo Bayesiano, il grafico di regressione esce
-figure(5);
+figure(9);
 x = [giorno_anno giorno_settimana]';
-t = [misura]';
+t = misura';
 
 % Choose a Training Function
 % For a list of all training functions type: help nntrain
@@ -134,15 +238,20 @@ net.plotFcns = {'plotperform','plottrainstate','ploterrhist', ...
 % Test the Network
 y = net(x);
 e = gsubtract(t,y);
-performance = perform(net,t,y)
+scartoNET = misura - y';
+SSRNET = scartoNET' * scartoNET;
+performance = perform(net,t,y);
+
+%L'SSR e' generalmente tra 1.9 e 2.0 , e' il migliore tra tutti i modelli
+%(per ora)
 
 % Recalculate Training, Validation and Test Performance
 trainTargets = t .* tr.trainMask{1};
 valTargets = t .* tr.valMask{1};
 testTargets = t .* tr.testMask{1};
-trainPerformance = perform(net,trainTargets,y)
-valPerformance = perform(net,valTargets,y)
-testPerformance = perform(net,testTargets,y)
+trainPerformance = perform(net,trainTargets,y);
+valPerformance = perform(net,valTargets,y);
+testPerformance = perform(net,testTargets,y);
 
 % View the Network
 view(net)
@@ -160,11 +269,5 @@ scatter3(giorno_anno,giorno_settimana,y,'*');
 xlabel('Giorni Anno');
 ylabel('Giorni Settimana');
 zlabel('Consumi');
-hold on;
-
-[Xg, Yg] = meshgrid(linspace(min(giorno_anno),max(giorno_anno),15), linspace(min(giorno_settimana),max(giorno_settimana),15));
-Xcol = Xg(:);
-Ycol = Yg(:);
-surf(Xg,Yg,reshape(y,size(Xg)));
 hold on;
 scatter3(giorno_anno,giorno_settimana,misura,'o');
