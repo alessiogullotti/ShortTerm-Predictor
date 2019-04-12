@@ -120,7 +120,7 @@ scatter3(giorno_anno,giorno_settimana,misura,'o');
 figure(7);
 w = 2 * pi / 365;
 phiFour = ones(size(giorno_anno));
-for n = 1:8
+for n = 1:14
     phiFour = [phiFour, cos(n*w.*giorno_anno),sin(n*w.*giorno_anno),cos(n*w.*giorno_settimana),sin(n*w.*giorno_settimana)];
 end
 thetaCapFour = phiFour \ misura;
@@ -140,7 +140,7 @@ hold on;
 Xcol = Xg(:);
 Ycol = Yg(:);
 PhiGridFour = ones(size(Xcol));
-for n = 1:8
+for n = 1:14
     PhiGridFour = [PhiGridFour, cos(n*w.*Xcol),sin(n*w.*Xcol),cos(n*w.*Ycol),sin(n*w.*Ycol)];
 end
 YgridFour = PhiGridFour*thetaCapFour;
@@ -151,7 +151,8 @@ scatter3(giorno_anno,giorno_settimana,misura,'o');
 
 %Si nota che il modello mediante serie di Fourier risulta essere il
 %migliore, provo a Crossvalidarlo con i dati del secondo anno
-%N.B= adattare l' n massimo con quello in identificazione
+%N.B= adattare l' n massimo con quello in identificazione e togliere meta'
+%dati
 figure(8);
 dataDue = readtable('data.xlsx','Range','A367:C732');
 giorno_annoDue = table2array(dataDue(: , 1));
@@ -166,7 +167,7 @@ for c = 1: 364
 end
 
 phiFourVal = ones(size(giorno_annoDue));
-for n = 1:8
+for n = 1:14
     phiFourVal = [phiFourVal, cos(n*w.*giorno_annoDue),sin(n*w.*giorno_annoDue),cos(n*w.*giorno_settimanaDue),sin(n*w.*giorno_settimanaDue)];
 end
 misuraStimataFourVal = phiFourVal * thetaCapFour;
@@ -185,7 +186,7 @@ hold on;
 Xcol = Xg(:);
 Ycol = Yg(:);
 PhiGridFourVal = ones(size(Xcol));
-for n = 1:8
+for n = 1:14
     PhiGridFourVal = [PhiGridFourVal, cos(n*w.*Xcol),sin(n*w.*Xcol),cos(n*w.*Ycol),sin(n*w.*Ycol)];
 end
 YgridFourVal = PhiGridFourVal*thetaCapFour;
@@ -235,15 +236,18 @@ net.plotFcns = {'plotperform','plottrainstate','ploterrhist', ...
 % Train the Network
 [net,tr] = train(net,x,t);
 
+% Getting the ThetaCap
+thetaCapNET = getwb(net);
+
+%Getting the number of targets used
+nt = length(tr.trainInd);
+
 % Test the Network
 y = net(x);
 e = gsubtract(t,y);
 scartoNET = misura - y';
 SSRNET = scartoNET' * scartoNET;
 performance = perform(net,t,y);
-
-%L'SSR e' generalmente tra 1.9 e 2.0 , e' il migliore tra tutti i modelli
-%(per ora)
 
 % Recalculate Training, Validation and Test Performance
 trainTargets = t .* tr.trainMask{1};
@@ -264,10 +268,72 @@ view(net)
 %figure, plotregression(t,y)
 %figure, plotfit(net,x,t)
 
-
 scatter3(giorno_anno,giorno_settimana,y,'*');
 xlabel('Giorni Anno');
 ylabel('Giorni Settimana');
 zlabel('Consumi');
 hold on;
 scatter3(giorno_anno,giorno_settimana,misura,'o');
+
+
+%-------------------------------------------------------
+%In ultima analisi provo a creare un modello su stima di Fourier basato
+%in ingresso sui dati della settimana e come misura uso il mercoledi
+
+dataTab = data {:,:};
+for n = 1: size(dataTab)-1
+    if isnan(dataTab(n,3))
+        dataTab(n,:) = [];
+    end
+end
+mer = dataTab(dataTab(:,2)==3,3); %e' la y
+mer(1,:) = []; %tolgo il primo y perche' non ho dati precedentemente
+mer(104,:) = []; %tolgo ultima misura per fare previsione tramite OCV   (Ordinary Cross Validation)              
+mer(103,:) = [];
+gio = dataTab(dataTab(:,2)==4,3);
+gio(104,:) = [];
+gio(103,:) = [];
+ven = dataTab(dataTab(:,2)==5,3);
+ven(104,:) = [];
+ven(103,:) = [];
+sab = dataTab(dataTab(:,2)==6,3);
+sab(104,:) = [];
+sab(103,:) = [];
+dom = dataTab(dataTab(:,2)==7,3);
+dom(104,:) = [];
+dom(103,:) = [];
+lun = dataTab(dataTab(:,2)==1,3);
+lun(104,:) = [];
+lun(103,:) = [];
+mar = dataTab(dataTab(:,2)==2,3);
+mar(104,:) = [];
+mar(103,:) = [];
+
+w = 2 * pi / 365;
+phiFour2 = ones(size(gio));
+for n = 1:12
+    phiFour2 = [phiFour2, cos(n*w.*gio),sin(n*w.*gio),cos(n*w.*ven),sin(n*w.*ven),sin(n*w.*gio),cos(n*w.*sab),sin(n*w.*sab),sin(n*w.*gio),cos(n*w.*dom),sin(n*w.*dom),sin(n*w.*gio),cos(n*w.*lun),sin(n*w.*lun),sin(n*w.*gio),cos(n*w.*mar),sin(n*w.*mar)];
+end
+thetaCapFour2 = phiFour2 \ mer;
+misuraStimataFour2 = phiFour2 * thetaCapFour2;
+scartoFour2 = mer - misuraStimataFour2;
+SSRFOUR2 = scartoFour2' * scartoFour2;
+
+
+%Per concluder testo i modelli ricavati con le varie tecniche
+%TEST FPE
+fpeL2 = ((length(misura)+length(thetaCapL2))/(length(misura)-length(thetaCapL2))) * SSRL2;
+fpeL3 = ((length(misura)+length(thetaCapL3))/(length(misura)-length(thetaCapL3))) * SSRL3;
+fpeL4 = ((length(misura)+length(thetaCapL4))/(length(misura)-length(thetaCapL4))) * SSRL4;
+fpeFOUR = ((length(misura)+length(thetaCapFour))/(length(misura)-length(thetaCapFour))) * SSRFOUR;
+fpeFOUR2 = ((length(mer)+length(thetaCapFour2))/(length(mer)-length(thetaCapFour2))) * SSRFOUR2;
+
+%TEST AIC
+aicL2 = (2*length(thetaCapL2)/length(misura))+log(SSRL2);
+aicL3 = (2*length(thetaCapL3)/length(misura))+log(SSRL3);
+aicL4 = (2*length(thetaCapL4)/length(misura))+log(SSRL4);
+aicFOUR = (2*length(thetaCapFour)/length(misura))+log(SSRFOUR);
+aicFOUR2 = (2*length(thetaCapFour2)/length(mer))+log(SSRFOUR2);
+aicNET = (2*length(thetaCapNET)/nt)+log(SSRNET);
+
+%Si nota che il modello migliore e' il FOUR2! Facciamo una predizione!
