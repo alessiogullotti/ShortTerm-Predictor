@@ -1,29 +1,34 @@
-close all;
+17.006759561969407,
+8.075226443229878,
+16.149122493032873, 
+18.920864934517670, 
+17.914037276511990
+, 19.415734268048900,
+18.868723656707065,
+18.400262374468860, 
+19.204371971680334,
+20.022259523896800, 
+7.216225853699553, 
+19.446196326676570,
+19.813016311841032, 
+28.978123500659805, 
+16.590962208534993,
+19.389923118609970,
+21.602009056432740,
+23.625095642013576, 
+20.609067600268922,
+26.539062435374245,
+24.837585344435723,
+25.657832436145718,
+28.076524073337060,
+20.967120970057970, 
+15.350909868489701, 
+15.093427279349724,
+21.863538994343312,
+21.723444634831473,
+18.275038709903720, 
+18.723433067859915, 
+21.845808555317540, 
+45.679354065522320
 
-%N.B = Runnare prima main e poi il tryfunc (questo per poter ricavare prima
-%i thetaCap)
 
-%La funzione richiede la scrittura in T (array 1x6) delle misure rilevate
-%da giovedi' a martedi' ed effettua la predizione sul mercoledi
-
-T = [36.899181671791666 36.160694699500006 35.216059679874995 29.335233257291662 26.830451813166675 32.621158044208336];
-%Ho scelto la settimana dal dato 716 al 721 , questi dati non sono stati
-%usati per l'identificazione, provare con dati identificati
-
-gio = T(1,1);
-ven = T(1,2);
-sab = T(1,3);
-dom = T(1,4);
-lun = T(1,5);
-mar = T(1,6);
-
-w = 2 * pi/365;
-phiFourPrev = ones(size(gio));
-for n = 1:12 %se si alza il valore della serie ricordare di cambiarlo anche nel main
-    phiFourPrev = [phiFourPrev, cos(n*w.*gio),sin(n*w.*gio),cos(n*w.*ven),sin(n*w.*ven),sin(n*w.*gio),cos(n*w.*sab),sin(n*w.*sab),sin(n*w.*gio),cos(n*w.*dom),sin(n*w.*dom),sin(n*w.*gio),cos(n*w.*lun),sin(n*w.*lun),sin(n*w.*gio),cos(n*w.*mar),sin(n*w.*mar)];
-end
-
-PREVISIONE = phiFourPrev * thetaCapFour2;
-
-%Atteso: 32.2
-%Previsione: 33.9
