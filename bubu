@@ -1,0 +1,29 @@
+
+PREVISIONE = [];
+for i=56:99
+    T=misure(i,:);
+    mer = T(1,1);
+    gio = T(1,2);
+    ven = T(1,3);
+    sab = T(1,4);
+    dom = T(1,5);
+    lun = T(1,6);
+    mar = T(1,7);
+
+    w = 1;
+    phiL0= ones(size(gio));
+    for n =1%se si alza il valore della serie ricordare di cambiarlo anche nel main
+        phiL1= [phiL0,mer,gio,ven,sab,dom,lun,mar];
+        phiL2 = [phiL1,mer.*gio,mer.*ven,mer.*sab,mer.*dom,mer.*lun,mer.*mar,gio.*ven,gio.*sab,gio.*dom,gio.*lun,gio.*mar,gio.*mer,ven.*sab,ven.*dom,ven.*lun,ven.*mar,ven.*mer,sab.*dom,sab.*lun,sab.*mar,sab.*mer,dom.*lun,dom.*mar,dom.*mer,lun.*mar,lun.*mer,mar.*mer,mer.^2,gio.^2,ven.^2,sab.^2,dom.^2,lun.^2,mar.^2];
+        phiL3 = [phiL2,(mer.^2).*gio,(mer.^2).*ven,(mer.^2).*sab,(mer.^2).*dom,(mer.^2).*lun,(mer.^2).*mar,(gio.^2).*mer,(gio.^2).*ven,(gio.^2).*sab,(gio.^2).*dom,(gio.^2).*lun,(gio.^2).*mar,(ven.^2).*mer,(ven.^2).*gio,(ven.^2).*sab,(ven.^2).*dom,(ven.^2).*lun,(ven.^2).*mar,(sab.^2).*mer,(sab.^2).*gio,(sab.^2).*ven,(sab.^2).*dom,(sab.^2).*lun,(sab.^2).*mar,(dom.^2).*mer,(dom.^2).*gio,(dom.^2).*ven,(dom.^2).*sab,(dom.^2).*lun,(dom.^2).*mar,(lun.^2).*mer,(lun.^2).*gio,(lun.^2).*ven,(lun.^2).*sab,(lun.^2).*dom,(lun.^2).*mar,(mar.^2).*mer,(mar.^2).*gio,(mar.^2).*ven,(mar.^2).*sab,(mar.^2).*dom,(mar.^2).*lun,mer.^3,gio.^3,ven.^3,sab.^3,dom.^3,lun.^3,mar.^3];
+
+    end
+    PREVISIONE=[PREVISIONE ;phiL0*thetaCapL0];
+ end
+Atteso=misure(56:99,1);
+Atteso(1,:) = [];
+Atteso= vertcat(Atteso,interpol1);
+scatter([1:size(Atteso)], Atteso,'o','r')
+hold on
+scatter([1:size(Atteso)], PREVISIONE,'x','b')
+MAPEL1=mean((abs(PREVISIONE-Atteso)./Atteso))
